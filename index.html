@@ -3,840 +3,460 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitor de Cartela da Lotofácil com API OCR</title>
+    <title>Cartela de Bingo Corrigida</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
         body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
             background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
             color: #fff;
             min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
-        
-        header {
-            text-align: center;
-            margin-bottom: 20px;
-            width: 100%;
-        }
-        
-        h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        
         .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 900px;
+            max-width: 1200px;
+            margin: 0 auto;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 15px;
-            padding: 20px;
+            padding: 25px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
-        
-        .camera-container {
-            width: 100%;
-            margin-bottom: 15px;
-            position: relative;
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #ffcc00;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
-        
-        #video {
-            width: 100%;
-            height: 300px;
+        .subtitle {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 25px;
+            color: #fff;
+        }
+        .instructions {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
             border-radius: 10px;
-            background: #000;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            object-fit: cover;
+            margin-bottom: 25px;
+            border-left: 5px solid #ffcc00;
         }
-        
-        .overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 70%;
-            height: 80%;
-            border: 3px dashed #ffcc00;
+        .instructions h2 {
+            margin-top: 0;
+            color: #ffcc00;
+        }
+        .instructions ol {
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        .game {
+            border: 2px solid #ffcc00;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s;
+            color: #333;
+        }
+        .game:hover {
+            transform: translateY(-5px);
+        }
+        .game-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+            background: linear-gradient(to right, #1a2a6c, #b21f1f);
+            color: white;
+            padding: 10px;
             border-radius: 8px;
-            pointer-events: none;
-            transition: all 0.3s ease;
+            font-size: 1.2rem;
         }
-        
-        .overlay.detecting {
-            border: 3px solid #00ff00;
-            box-shadow: 0 0 20px #00ff00;
-            animation: pulse 1s infinite;
-        }
-        
-        .overlay.captured {
-            border: 3px solid #ff00ff;
-            box-shadow: 0 0 30px #ff00ff;
-        }
-        
-        @keyframes pulse {
-            0% { box-shadow: 0 0 10px #00ff00; }
-            50% { box-shadow: 0 0 30px #00ff00; }
-            100% { box-shadow: 0 0 10px #00ff00; }
-        }
-        
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 15px 0;
+        table {
+            border-collapse: collapse;
             width: 100%;
         }
-        
+        th {
+            background-color: #1a2a6c;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        td {
+            width: 45px;
+            height: 45px;
+            text-align: center;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+        }
+        td:hover {
+            background-color: #e9ecef;
+            transform: scale(1.05);
+        }
+        td.selected {
+            background-color: #4caf50 !important; /* Verde para números selecionados */
+            color: white;
+        }
+        td.not-found {
+            background-color: #f44336 !important; /* Vermelho para números não encontrados */
+            color: white;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
         button {
-            padding: 12px 15px;
+            padding: 12px 20px;
             border: none;
             border-radius: 8px;
-            background: linear-gradient(to right, #ffcc00, #ff9900);
-            color: #1a2a6c;
+            background: linear-gradient(to right, #1a2a6c, #2575fc);
+            color: white;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-size: 1rem;
         }
-        
         button:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
-        
         button:active {
             transform: translateY(0);
         }
-        
-        button:disabled {
-            background: #666;
-            color: #999;
-            cursor: not-allowed;
-        }
-        
-        .primary-btn {
-            grid-column: span 2;
+        #verifyBtn {
             background: linear-gradient(to right, #00c853, #00e676);
             color: #003915;
         }
-        
-        .stop-btn {
-            background: linear-gradient(to right, #ff5252, #ff1744);
-            color: white;
+        #exportBtn {
+            background: linear-gradient(to right, #ff9800, #ff5722);
         }
-        
-        .api-selector {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 10px 0;
-            gap: 8px;
-            width: 100%;
-        }
-        
-        .api-selector select {
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #ffcc00;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-        
-        .results {
-            width: 100%;
-            margin-top: 20px;
-        }
-        
-        h2 {
+        .number-input {
+            margin: 20px 0;
             text-align: center;
-            margin-bottom: 15px;
-            color: #ffcc00;
-            font-size: 1.4rem;
+            width: 100%;
         }
-        
-        .game-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            justify-content: center;
-        }
-        
-        .game-tab {
-            padding: 10px 15px;
-            background: rgba(255, 255, 255, 0.2);
+        input[type="text"] {
+            padding: 12px 15px;
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #ffcc00;
             border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
         }
-        
-        .game-tab.active {
-            background: #ffcc00;
-            color: #1a2a6c;
-            font-weight: bold;
-        }
-        
-        .numbers-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-        
-        .number {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 6px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        
-        .number.selected {
-            background: linear-gradient(to bottom, #ffcc00, #ff9900);
-            color: #1a2a6c;
-            transform: scale(1.05);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        
-        .copy-btn {
-            margin-top: 10px;
-            width: 100%;
-            padding: 12px;
-            font-size: 1rem;
-        }
-        
-        .instructions {
-            margin-top: 20px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            width: 100%;
-        }
-        
-        .instructions h3 {
-            margin-bottom: 10px;
-            color: #ffcc00;
-            text-align: center;
-        }
-        
-        .instructions ol {
-            padding-left: 20px;
-        }
-        
-        .instructions li {
+        label {
+            display: block;
             margin-bottom: 8px;
-            line-height: 1.4;
-        }
-        
-        .status {
-            margin: 10px 0;
-            text-align: center;
             font-weight: bold;
-            min-height: 20px;
             color: #ffcc00;
         }
-        
-        .progress {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            height: 15px;
-            margin: 10px 0;
-            overflow: hidden;
-            display: none;
+        .free-cell {
+            background-color: #ffeb3b !important;
+            color: #333;
+            font-weight: bold;
         }
-        
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(to right, #00c853, #00e676);
-            border-radius: 8px;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        
-        .loading {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
-        }
-        
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #ffcc00;
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .capture-feedback {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
+        .export-info {
             text-align: center;
-            z-index: 1001;
-            display: none;
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
-            border: 2px solid #00ff00;
+            margin-top: 15px;
+            color: #ffcc00;
+            font-size: 0.9rem;
         }
-        
-        .api-key-input {
-            margin: 10px 0;
-            width: 100%;
-        }
-        
-        .api-key-input input {
-            width: 100%;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #ffcc00;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            margin-top: 5px;
-        }
-        
         @media (max-width: 768px) {
-            h1 {
-                font-size: 1.8rem;
+            .game-container {
+                flex-direction: column;
+                align-items: center;
             }
-            
-            .container {
-                padding: 15px;
+            .game {
+                width: 100%;
             }
-            
             .controls {
                 flex-direction: column;
+                align-items: center;
             }
-            
             button {
                 width: 100%;
+                max-width: 300px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="loading" id="loading">
-        <div class="loading-spinner"></div>
-        <p id="loading-text">Processando...</p>
-    </div>
-    
-    <div class="capture-feedback" id="captureFeedback">
-        <h3>Captura Realizada!</h3>
-        <p>Números detectados com sucesso</p>
-    </div>
-
-    <header>
-        <h1>Leitor de Cartela da Lotofácil com API OCR</h1>
-        <p>Utiliza API avançada para melhor reconhecimento</p>
-    </header>
-    
     <div class="container">
-        <div class="camera-container">
-            <video id="video" autoplay playsinline></video>
-            <div class="overlay" id="overlay"></div>
-        </div>
-        
-        <div class="progress" id="progress">
-            <div class="progress-bar" id="progressBar"></div>
-        </div>
-        
-        <div class="status" id="status">Pressione Iniciar Câmera para começar</div>
-        
-        <div class="api-selector">
-            <label for="apiType">Selecione o método de OCR:</label>
-            <select id="apiType">
-                <option value="simulated">OCR Simulado (Sem API)</option>
-                <option value="google">Google Cloud Vision API</option>
-                <option value="azure">Azure Computer Vision API</option>
-                <option value="openai">OpenAI GPT-4 Vision</option>
-            </select>
-        </div>
-        
-        <div class="api-key-input" id="apiKeyInput" style="display: none;">
-            <label for="apiKey">Chave da API:</label>
-            <input type="password" id="apiKey" placeholder="Insira sua chave de API">
-        </div>
-        
-        <div class="controls">
-            <button id="startButton">Iniciar Câmera</button>
-            <button id="stopButton" class="stop-btn" disabled>Parar Câmera</button>
-            <button id="scanButton" class="primary-btn" disabled>Escanear Agora</button>
-        </div>
-        
-        <div class="results">
-            <h2>Jogos Identificados</h2>
-            <div class="game-tabs">
-                <div class="game-tab active" data-game="1">Jogo 1</div>
-                <div class="game-tab" data-game="2">Jogo 2</div>
-                <div class="game-tab" data-game="3">Jogo 3</div>
-            </div>
-            
-            <div class="game-results">
-                <div class="game-result active" data-game="1">
-                    <div class="numbers-grid" id="numbersGrid1"></div>
-                </div>
-                <div class="game-result" data-game="2">
-                    <div class="numbers-grid" id="numbersGrid2"></div>
-                </div>
-                <div class="game-result" data-game="3">
-                    <div class="numbers-grid" id="numbersGrid3"></div>
-                </div>
-            </div>
-            
-            <button id="copyButton" class="copy-btn" disabled>Copiar Números</button>
-        </div>
+        <h1>Cartela de Bingo Corrigida</h1>
+        <p class="subtitle">Agora com verificação correta e exportação para Excel</p>
         
         <div class="instructions">
-            <h3>Como usar:</h3>
+            <h2>Como usar:</h2>
             <ol>
-                <li>Selecione o método de OCR desejado (para APIs reais, insira sua chave)</li>
-                <li>Clique em "Iniciar Câmera" para ativar sua câmera.</li>
-                <li>Posicione a cartela da Lotofácil dentro da área demarcada.</li>
-                <li>Clique em "Escanear Agora" para processar a imagem.</li>
-                <li>Use as abas para visualizar os diferentes jogos identificados.</li>
-                <li>Clique em "Copiar Números" para copiar os números selecionados.</li>
+                <li>Clique nos números que você marcou em cada jogo (eles ficarão verdes)</li>
+                <li>Insira os números sorteados separados por vírgula no campo abaixo</li>
+                <li>Clique em "Verificar" para identificar números marcados que não foram sorteados (eles ficarão vermelhos)</li>
+                <li>Use "Exportar para Excel" para baixar um arquivo com sua cartela completa</li>
             </ol>
-            
-            <h3>Sobre as APIs:</h3>
-            <ul>
-                <li><strong>Google Cloud Vision</strong>: API paga com alto precisão (requer chave API)</li>
-                <li><strong>Azure Computer Vision</strong>: API Microsoft com boa precisão (requer chave API)</li>
-                <li><strong>OpenAI GPT-4 Vision</strong>: Reconhecimento avançado por IA (requer chave API)</li>
-                <li><strong>OCR Simulado</strong>: Funcionalidade básica sem necessidade de API</li>
-            </ul>
         </div>
+
+        <div class="number-input">
+            <label for="drawnNumbers">Números Sorteados (separados por vírgula):</label>
+            <input type="text" id="drawnNumbers" placeholder="Ex: 5, 10, 15, 20, 25, 30, 35, 40, 45, 50">
+        </div>
+
+        <div class="game-container" id="gamesContainer">
+            <!-- Os jogos serão gerados via JavaScript -->
+        </div>
+
+        <div class="controls">
+            <button id="verifyBtn">Verificar Números</button>
+            <button id="exportBtn">Exportar para Excel</button>
+        </div>
+        
+        <p class="export-info">O arquivo Excel conterá todos os 3 jogos com as marcações atuais.</p>
     </div>
 
+    <!-- Biblioteca para exportação Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const video = document.getElementById('video');
-            const startButton = document.getElementById('startButton');
-            const stopButton = document.getElementById('stopButton');
-            const scanButton = document.getElementById('scanButton');
-            const copyButton = document.getElementById('copyButton');
-            const status = document.getElementById('status');
-            const progress = document.getElementById('progress');
-            const progressBar = document.getElementById('progressBar');
-            const gameTabs = document.querySelectorAll('.game-tab');
-            const gameResults = document.querySelectorAll('.game-result');
-            const loading = document.getElementById('loading');
-            const loadingText = document.getElementById('loading-text');
-            const overlay = document.getElementById('overlay');
-            const apiType = document.getElementById('apiType');
-            const apiKeyInput = document.getElementById('apiKeyInput');
-            const apiKey = document.getElementById('apiKey');
-            const captureFeedback = document.getElementById('captureFeedback');
+            const gamesContainer = document.getElementById('gamesContainer');
+            const verifyBtn = document.getElementById('verifyBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const drawnNumbersInput = document.getElementById('drawnNumbers');
             
-            let stream = null;
-            let selectedNumbers = [];
-            let gameData = {
-                1: [],
-                2: [],
-                3: []
-            };
-            let currentGame = 1;
-            let isProcessing = false;
-            
-            // Gerar as grades de números de 1 a 25 para cada jogo
-            for (let game = 1; game <= 3; game++) {
-                const numbersGrid = document.getElementById(`numbersGrid${game}`);
-                for (let i = 1; i <= 25; i++) {
-                    const numberElement = document.createElement('div');
-                    numberElement.className = 'number';
-                    numberElement.textContent = i;
-                    numberElement.dataset.number = i;
-                    
-                    numberElement.addEventListener('click', function() {
-                        this.classList.toggle('selected');
-                        updateSelectedNumbers();
-                    });
-                    
-                    numbersGrid.appendChild(numberElement);
-                }
+            // Gerar os 3 jogos com números aleatórios
+            const games = [];
+            for (let i = 0; i < 3; i++) {
+                games.push(generateGame(i + 1));
             }
             
-            // Alternar entre abas de jogos
-            gameTabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const gameId = this.dataset.game;
+            // Renderizar os jogos
+            games.forEach(game => {
+                const gameElement = createGameElement(game);
+                gamesContainer.appendChild(gameElement);
+            });
+            
+            // Evento para verificar os números
+            verifyBtn.addEventListener('click', function() {
+                const drawnNumbers = parseDrawnNumbers(drawnNumbersInput.value);
+                verifyGames(drawnNumbers);
+            });
+            
+            // Evento para exportar para Excel
+            exportBtn.addEventListener('click', exportToExcel);
+            
+            // Função para gerar um jogo com números aleatórios
+            function generateGame(gameNumber) {
+                const letters = ['B', 'I', 'N', 'G', 'O'];
+                const ranges = {
+                    'B': { min: 1, max: 15 },
+                    'I': { min: 16, max: 30 },
+                    'N': { min: 31, max: 45 },
+                    'G': { min: 46, max: 60 },
+                    'O': { min: 61, max: 75 }
+                };
+                
+                const game = {
+                    number: gameNumber,
+                    title: `Jogo ${gameNumber}`,
+                    cells: {}
+                };
+                
+                letters.forEach(letter => {
+                    game.cells[letter] = [];
+                    const numbers = [];
                     
-                    // Atualizar aba ativa
-                    gameTabs.forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
+                    // Gerar 5 números únicos para cada letra
+                    while (numbers.length < 5) {
+                        const num = Math.floor(Math.random() * (ranges[letter].max - ranges[letter].min + 1)) + ranges[letter].min;
+                        if (!numbers.includes(num)) {
+                            numbers.push(num);
+                        }
+                    }
                     
-                    // Atualizar conteúdo visível
-                    gameResults.forEach(r => r.classList.remove('active'));
-                    document.querySelector(`.game-result[data-game="${gameId}"]`).classList.add('active');
-                    
-                    currentGame = parseInt(gameId);
-                    updateSelectedNumbers();
+                    // Ordenar os números
+                    numbers.sort((a, b) => a - b);
+                    game.cells[letter] = numbers;
                 });
-            });
+                
+                // Tornar a célula do meio (N3) como "FREE"
+                game.cells['N'][2] = 'FREE';
+                
+                return game;
+            }
             
-            // Mostrar/ocultar campo de chave API conforme seleção
-            apiType.addEventListener('change', function() {
-                if (this.value === 'simulated') {
-                    apiKeyInput.style.display = 'none';
-                } else {
-                    apiKeyInput.style.display = 'block';
-                }
-            });
-            
-            // Iniciar a câmera
-            startButton.addEventListener('click', async function() {
-                try {
-                    status.textContent = 'Solicitando acesso à câmera...';
-                    loading.style.display = 'flex';
-                    loadingText.textContent = 'Solicitando acesso à câmera...';
+            // Função para criar o elemento HTML do jogo
+            function createGameElement(game) {
+                const gameDiv = document.createElement('div');
+                gameDiv.className = 'game';
+                gameDiv.id = `game-${game.number}`;
+                
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'game-title';
+                titleDiv.textContent = game.title;
+                gameDiv.appendChild(titleDiv);
+                
+                const table = document.createElement('table');
+                
+                // Cabeçalho com as letras B I N G O
+                const headerRow = document.createElement('tr');
+                ['B', 'I', 'N', 'G', 'O'].forEach(letter => {
+                    const th = document.createElement('th');
+                    th.textContent = letter;
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
+                
+                // Criar as 5 linhas de números
+                for (let i = 0; i < 5; i++) {
+                    const row = document.createElement('tr');
                     
-                    stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { 
-                            facingMode: 'environment',
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        } 
+                    ['B', 'I', 'N', 'G', 'O'].forEach(letter => {
+                        const td = document.createElement('td');
+                        const cellValue = game.cells[letter][i];
+                        td.textContent = cellValue;
+                        td.dataset.letter = letter;
+                        td.dataset.index = i;
+                        td.dataset.game = game.number;
+                        td.dataset.value = cellValue;
+                        
+                        // Destacar célula FREE
+                        if (cellValue === 'FREE') {
+                            td.classList.add('free-cell');
+                        }
+                        
+                        // Adicionar evento de clique para marcar/desmarcar
+                        td.addEventListener('click', function() {
+                            this.classList.toggle('selected');
+                            // Remover a marcação de "não encontrado" se estiver presente
+                            this.classList.remove('not-found');
+                        });
+                        
+                        row.appendChild(td);
                     });
                     
-                    video.srcObject = stream;
-                    startButton.disabled = true;
-                    stopButton.disabled = false;
-                    scanButton.disabled = false;
-                    status.textContent = 'Câmera ativa. Posicione a cartela na área demarcada.';
-                    loading.style.display = 'none';
-                } catch (error) {
-                    console.error('Erro ao acessar a câmera:', error);
-                    status.textContent = 'Erro ao acessar a câmera. Verifique as permissões.';
-                    loading.style.display = 'none';
+                    table.appendChild(row);
                 }
-            });
+                
+                gameDiv.appendChild(table);
+                return gameDiv;
+            }
             
-            // Parar a câmera
-            stopButton.addEventListener('click', function() {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                    video.srcObject = null;
-                    stream = null;
-                    startButton.disabled = false;
-                    stopButton.disabled = true;
-                    scanButton.disabled = true;
-                    status.textContent = 'Câmera desativada. Pressione Iniciar Câmera para reativar.';
-                    overlay.classList.remove('detecting', 'captured');
+            // Função para analisar os números sorteados
+            function parseDrawnNumbers(input) {
+                return input.split(',')
+                    .map(num => num.trim())
+                    .filter(num => num !== '' && !isNaN(num))
+                    .map(num => parseInt(num));
+            }
+            
+            // Função para verificar os jogos - CORRIGIDA
+            function verifyGames(drawnNumbers) {
+                // Primeiro, remover a classe not-found de todas as células
+                document.querySelectorAll('td').forEach(cell => {
+                    cell.classList.remove('not-found');
+                });
+                
+                // Para cada jogo
+                for (let gameNum = 1; gameNum <= 3; gameNum++) {
+                    const gameElement = document.getElementById(`game-${gameNum}`);
+                    
+                    // Para cada célula no jogo
+                    gameElement.querySelectorAll('td').forEach(cell => {
+                        const cellValue = cell.textContent;
+                        
+                        // Se a célula estiver marcada como selecionada (pelo usuário)
+                        if (cell.classList.contains('selected')) {
+                            // Verificar se o número está entre os sorteados
+                            if (cellValue === 'FREE') {
+                                // FREE sempre é considerado acerto, não faz nada
+                            } else {
+                                const numberValue = parseInt(cellValue);
+                                if (!drawnNumbers.includes(numberValue)) {
+                                    cell.classList.add('not-found'); // Vermelho para números não sorteados
+                                }
+                            }
+                        }
+                    });
                 }
-            });
+                
+                alert('Verificação concluída! Os números marcados que não foram sorteados aparecerão em vermelho.');
+            }
             
-            // Capturar e processar imagem
-            scanButton.addEventListener('click', function() {
-                captureAndProcessImage();
-            });
-            
-            // Capturar e processar imagem
-            function captureAndProcessImage() {
-                if (isProcessing) return;
-                isProcessing = true;
+            // Função para exportar para Excel
+            function exportToExcel() {
+                // Preparar os dados para exportação
+                const data = [];
                 
-                // Mostrar barra de progresso
-                progress.style.display = 'block';
-                progressBar.style.width = '0%';
-                status.textContent = 'Processando imagem...';
-                scanButton.disabled = true;
-                loading.style.display = 'flex';
-                loadingText.textContent = 'Processando imagem...';
-                overlay.classList.add('captured');
+                // Cabeçalho
+                data.push(['Cartela de Bingo - Resultados']);
+                data.push([]);
                 
-                // Criar um canvas para capturar o frame do vídeo
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                
-                // Definir as dimensões do canvas
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                
-                // Desenhar o frame do vídeo no canvas
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Converter canvas para blob
-                canvas.toBlob(async (blob) => {
-                    try {
-                        // Simular progresso
-                        let progressValue = 0;
-                        const progressInterval = setInterval(() => {
-                            progressValue += 5;
-                            progressBar.style.width = progressValue + '%';
-                            status.textContent = `Processando: ${progressValue}%`;
-                            loadingText.textContent = `Processando: ${progressValue}%`;
+                // Para cada jogo
+                for (let gameNum = 1; gameNum <= 3; gameNum++) {
+                    data.push([`Jogo ${gameNum}`]);
+                    data.push(['B', 'I', 'N', 'G', 'O']);
+                    
+                    const gameElement = document.getElementById(`game-${gameNum}`);
+                    const rows = gameElement.querySelectorAll('tr');
+                    
+                    // Pular a linha de cabeçalho (B I N G O)
+                    for (let i = 1; i < rows.length; i++) {
+                        const cells = rows[i].querySelectorAll('td');
+                        const rowData = [];
+                        
+                        cells.forEach(cell => {
+                            let value = cell.textContent;
                             
-                            if (progressValue >= 100) {
-                                clearInterval(progressInterval);
-                                
-                                // Processar com a API selecionada
-                                processWithAPI(blob);
+                            // Adicionar status (selecionado/não encontrado)
+                            if (cell.classList.contains('selected')) {
+                                value += ' (S)'; // S de Selecionado
                             }
-                        }, 100);
-                    } catch (error) {
-                        console.error('Erro no processamento:', error);
-                        handleProcessingError(error);
-                    }
-                }, 'image/jpeg', 0.9);
-            }
-            
-            // Processar imagem com a API selecionada
-            async function processWithAPI(blob) {
-                const selectedAPI = apiType.value;
-                const apiKeyValue = apiKey.value.trim();
-                
-                try {
-                    let result;
-                    
-                    if (selectedAPI === 'simulated') {
-                        // Simular processamento com OCR
-                        result = await simulateOCRProcessing(blob);
-                    } else if (selectedAPI === 'google' || selectedAPI === 'azure' || selectedAPI === 'openai') {
-                        if (!apiKeyValue) {
-                            throw new Error('Chave de API não fornecida');
-                        }
+                            if (cell.classList.contains('not-found')) {
+                                value += ' (NF)'; // NF de Não Encontrado
+                            }
+                            
+                            rowData.push(value);
+                        });
                         
-                        // Simular chamada à API real (em um caso real, faríamos uma requisição HTTP)
-                        result = await simulateAPICall(blob, selectedAPI, apiKeyValue);
+                        data.push(rowData);
                     }
                     
-                    // Mostrar feedback visual de captura
-                    captureFeedback.style.display = 'block';
-                    setTimeout(() => {
-                        captureFeedback.style.display = 'none';
-                    }, 2000);
-                    
-                    // Processar o resultado
-                    processRecognizedText(result);
-                    copyButton.disabled = false;
-                    scanButton.disabled = false;
-                    isProcessing = false;
-                    
-                    progress.style.display = 'none';
-                    status.textContent = 'Reconhecimento concluído!';
-                    loading.style.display = 'none';
-                    
-                    // Restaurar overlay após um tempo
-                    setTimeout(() => {
-                        overlay.classList.remove('captured');
-                    }, 3000);
-                } catch (error) {
-                    handleProcessingError(error);
-                }
-            }
-            
-            // Simular processamento de OCR
-            async function simulateOCRProcessing(blob) {
-                // Em uma implementação real, isso seria substituído por uma chamada real à API
-                // Aqui estamos simulando um processamento que retorna números
-                
-                return new Promise((resolve) => {
-                    setTimeout(() => {
-                        // Gerar 15 números aleatórios para simular o reconhecimento
-                        const numbers = [];
-                        while (numbers.length < 15) {
-                            const randomNum = Math.floor(Math.random() * 25) + 1;
-                            if (!numbers.includes(randomNum)) {
-                                numbers.push(randomNum);
-                            }
-                        }
-                        
-                        resolve(numbers.sort((a, b) => a - b).join(', '));
-                    }, 1500);
-                });
-            }
-            
-            // Simular chamada à API
-            async function simulateAPICall(blob, apiType, apiKey) {
-                // Em uma implementação real, isso seria substituído por uma chamada real à API
-                // Aqui estamos apenas simulando
-                
-                return new Promise((resolve, reject) => {
-                    setTimeout(() => {
-                        // Simular validação de chave de API
-                        if (apiKey.length < 10) {
-                            reject(new Error('Chave de API inválida'));
-                            return;
-                        }
-                        
-                        // Gerar 15 números aleatórios para simular o reconhecimento
-                        const numbers = [];
-                        while (numbers.length < 15) {
-                            const randomNum = Math.floor(Math.random() * 25) + 1;
-                            if (!numbers.includes(randomNum)) {
-                                numbers.push(randomNum);
-                            }
-                        }
-                        
-                        // Simular melhor precisão para APIs pagas
-                        if (apiType === 'google') {
-                            // Google Vision tende a ser mais preciso
-                            if (Math.random() > 0.2) { // 80% de precisão
-                                resolve(numbers.sort((a, b) => a - b).join(', '));
-                            } else {
-                                // Às vezes falha
-                                reject(new Error('Falha no reconhecimento. Tente novamente.'));
-                            }
-                        } else if (apiType === 'azure') {
-                            // Azure também é preciso
-                            if (Math.random() > 0.3) { // 70% de precisão
-                                resolve(numbers.sort((a, b) => a - b).join(', '));
-                            } else {
-                                reject(new Error('Falha no reconhecimento. Tente novamente.'));
-                            }
-                        } else if (apiType === 'openai') {
-                            // OpenAI é muito preciso
-                            if (Math.random() > 0.1) { // 90% de precisão
-                                resolve(numbers.sort((a, b) => a - b).join(', '));
-                            } else {
-                                reject(new Error('Falha no reconhecimento. Tente novamente.'));
-                            }
-                        }
-                    }, 2000);
-                });
-            }
-            
-            // Tratar erro de processamento
-            function handleProcessingError(error) {
-                console.error('Erro no processamento:', error);
-                progress.style.display = 'none';
-                status.textContent = 'Erro: ' + error.message;
-                scanButton.disabled = false;
-                loading.style.display = 'none';
-                isProcessing = false;
-                overlay.classList.remove('captured');
-            }
-            
-            // Processar texto reconhecido
-            function processRecognizedText(text) {
-                // Encontrar todos os números no texto
-                const numbersFound = text.match(/\b\d{1,2}\b/g) || [];
-                
-                // Converter para números e filtrar para faixa válida (1-25)
-                const validNumbers = numbersFound
-                    .map(num => parseInt(num))
-                    .filter(num => num >= 1 && num <= 25)
-                    .filter((num, index, self) => self.indexOf(num) === index); // Remover duplicatas
-                
-                // Distribuir os números entre os 3 jogos
-                for (let game = 1; game <= 3; game++) {
-                    const gameNumbers = [];
-                    
-                    // Simular a distribuição de números entre os jogos
-                    for (let i = (game-1)*15; i < game*15 && i < validNumbers.length; i++) {
-                        if (validNumbers[i]) {
-                            gameNumbers.push(validNumbers[i]);
-                        }
-                    }
-                    
-                    // Se não houver números suficientes, completar com números aleatórios (simulação)
-                    while (gameNumbers.length < 15 && gameNumbers.length > 0) {
-                        const randomNum = Math.floor(Math.random() * 25) + 1;
-                        if (!gameNumbers.includes(randomNum)) {
-                            gameNumbers.push(randomNum);
-                        }
-                    }
-                    
-                    gameData[game] = gameNumbers.sort((a, b) => a - b);
-                    
-                    // Destacar os números escaneados
-                    const grid = document.getElementById(`numbersGrid${game}`);
-                    grid.querySelectorAll('.number').forEach(element => {
-                        const num = parseInt(element.dataset.number);
-                        if (gameData[game].includes(num)) {
-                            element.classList.add('selected');
-                        } else {
-                            element.classList.remove('selected');
-                        }
-                    });
+                    data.push([]);
                 }
                 
-                updateSelectedNumbers();
+                // Adicionar informações sobre a legenda
+                data.push(['Legenda:']);
+                data.push(['S = Número selecionado pelo usuário']);
+                data.push(['NF = Número selecionado mas não foi sorteado']);
+                
+                // Criar planilha
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Cartela de Bingo");
+                
+                // Gerar arquivo e fazer download
+                XLSX.writeFile(wb, "cartela_bingo.xlsx");
+                
+                alert('Arquivo Excel gerado com sucesso! Verifique sua pasta de downloads.');
             }
-            
-            // Copiar números selecionados
-            copyButton.addEventListener('click', function() {
-                if (selectedNumbers.length === 0) {
-                    status.textContent = 'Nenhum número selecionado para copiar.';
-                    return;
-                }
-                
-                const numbersText = selectedNumbers.sort((a, b) => a - b).join(', ');
-                
-                // Usando a API de clipboard
-                navigator.clipboard.writeText(numbersText)
-                    .then(() => {
-                        status.textContent = 'Números copiados para a área de transferência!';
-                    })
-                    .catch(err => {
-                        console.error('Erro ao copiar texto: ', err);
-                        
-                        // Fallback para dispositivos mais antigos
-                        const textArea = document.createElement('textarea');
-                        textArea.value = numbersText;
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        try {
-                            document.execCommand('copy');
-                            status.textContent = 'Números copiados!';
-                        } catch (fallbackError) {
-                            status.textContent = 'Falha ao copiar. Tente novamente.';
-                        }
-                        document.body.removeChild(textArea);
-                    });
-            });
-            
-            // Atualizar a lista de números selecionados
-            function updateSelectedNumbers() {
-                const currentGrid = document.getElementById(`numbersGrid${currentGame}`);
-                selectedNumbers = [];
-                currentGrid.querySelectorAll('.number.selected').forEach(element => {
-                    selectedNumbers.push(parseInt(element.dataset.number));
-                });
-                
-                status.textContent = selectedNumbers.length > 0 
-                    ? `Jogo ${currentGame}: ${selectedNumbers.sort((a, b) => a - b).join(', ')}` 
-                    : `Jogo ${currentGame}: Nenhum número selecionado.`;
-            }
-            
-            // Parar a câmera ao sair da página
-            window.addEventListener('beforeunload', function() {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-            });
         });
     </script>
 </body>
