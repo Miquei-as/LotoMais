@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitor de Cartela da Lotofácil com OCR Real</title>
+    <title>Leitor de Cartela da Lotofácil com Câmera</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -49,10 +49,38 @@
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
         
-        .upload-section {
+        .input-methods {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        .input-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .input-tab.active {
+            background: #ffcc00;
+            color: #1a2a6c;
+            font-weight: bold;
+        }
+        
+        .upload-section, .camera-section {
             width: 100%;
             margin-bottom: 20px;
             text-align: center;
+            display: none;
+        }
+        
+        .upload-section.active, .camera-section.active {
+            display: block;
         }
         
         .upload-area {
@@ -81,6 +109,50 @@
         
         #fileInput {
             display: none;
+        }
+        
+        .camera-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        #video {
+            width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            background: #000;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .camera-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70%;
+            height: 80%;
+            border: 3px dashed #ffcc00;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+        
+        .capture-btn {
+            margin-top: 10px;
+            padding: 12px 20px;
+            background: linear-gradient(to right, #00c853, #00e676);
+            color: #003915;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .capture-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
         
         .preview-container {
@@ -338,6 +410,10 @@
             button {
                 width: 100%;
             }
+            
+            .input-methods {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -351,12 +427,17 @@
     </div>
 
     <header>
-        <h1>Leitor de Cartela da Lotofácil com OCR Real</h1>
-        <p>Reconhecimento preciso dos números marcados na cartela</p>
+        <h1>Leitor de Cartela da Lotofácil com Câmera</h1>
+        <p>Reconhecimento em tempo real dos números marcados na cartela</p>
     </header>
     
     <div class="container">
-        <div class="upload-section">
+        <div class="input-methods">
+            <div class="input-tab active" data-method="upload">Upload de Imagem</div>
+            <div class="input-tab" data-method="camera">Usar Câmera</div>
+        </div>
+        
+        <div class="upload-section active" id="uploadSection">
             <div class="upload-area" id="uploadArea">
                 <i>📁</i>
                 <p>Clique aqui ou arraste uma imagem da cartela</p>
@@ -367,7 +448,19 @@
             </div>
         </div>
         
-        <div class="status" id="status">Aguardando imagem da cartela...</div>
+        <div class="camera-section" id="cameraSection">
+            <div class="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <div class="camera-overlay"></div>
+            </div>
+            <button id="captureButton" class="capture-btn">Capturar Imagem</button>
+            <div class="preview-container">
+                <canvas id="canvas" style="display: none;"></canvas>
+                <img id="cameraPreview" alt="Pré-visualização da captura">
+            </div>
+        </div>
+        
+        <div class="status" id="status">Selecione um método para carregar a imagem da cartela</div>
         
         <div class="progress" id="mainProgress" style="display: none;">
             <div class="progress-bar" id="mainProgressBar"></div>
@@ -415,7 +508,7 @@
         <div class="instructions">
             <h3>Como usar:</h3>
             <ol>
-                <li>Carregue uma imagem da sua cartela da Lotofácil</li>
+                <li>Selecione "Upload de Imagem" para enviar uma foto da cartela ou "Usar Câmera" para capturar em tempo real</li>
                 <li>Clique em "Processar com OCR" para analisar a imagem</li>
                 <li>Os números detectados serão marcados automaticamente em VERDE</li>
                 <li>Digite os números sorteados no campo indicado</li>
@@ -431,6 +524,7 @@
             const fileInput = document.getElementById('fileInput');
             const uploadArea = document.getElementById('uploadArea');
             const imagePreview = document.getElementById('imagePreview');
+            const cameraPreview = document.getElementById('cameraPreview');
             const processButton = document.getElementById('processButton');
             const verifyButton = document.getElementById('verifyButton');
             const exportButton = document.getElementById('exportButton');
@@ -446,6 +540,13 @@
             const drawnNumbersInput = document.getElementById('drawnNumbers');
             const ocrText = document.getElementById('ocrText');
             const confidence = document.getElementById('confidence');
+            const inputTabs = document.querySelectorAll('.input-tab');
+            const uploadSection = document.getElementById('uploadSection');
+            const cameraSection = document.getElementById('cameraSection');
+            const video = document.getElementById('video');
+            const captureButton = document.getElementById('captureButton');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
             
             let gameData = {
                 1: [],
@@ -454,6 +555,7 @@
             };
             let currentGame = 1;
             let uploadedImage = null;
+            let stream = null;
             
             // Gerar as grades de números de 1 a 25 para cada jogo
             for (let game = 1; game <= 3; game++) {
@@ -489,6 +591,76 @@
                     numbersGrid.appendChild(numberElement);
                 }
             }
+            
+            // Alternar entre métodos de entrada
+            inputTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const method = this.dataset.method;
+                    
+                    // Atualizar aba ativa
+                    inputTabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Atualizar seção visível
+                    uploadSection.classList.remove('active');
+                    cameraSection.classList.remove('active');
+                    
+                    if (method === 'upload') {
+                        uploadSection.classList.add('active');
+                        status.textContent = 'Selecione uma imagem da cartela';
+                    } else {
+                        cameraSection.classList.add('active');
+                        status.textContent = 'Posicione a cartela na frente da câmera';
+                        initCamera();
+                    }
+                });
+            });
+            
+            // Inicializar câmera
+            function initCamera() {
+                if (stream) {
+                    // Já temos uma stream, não precisamos fazer nada
+                    return;
+                }
+                
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(function(mediaStream) {
+                            stream = mediaStream;
+                            video.srcObject = mediaStream;
+                            video.play();
+                        })
+                        .catch(function(error) {
+                            console.error('Erro ao acessar a câmera:', error);
+                            status.textContent = 'Não foi possível acessar a câmera. Verifique as permissões.';
+                        });
+                } else {
+                    status.textContent = 'Seu navegador não suporta acesso à câmera.';
+                }
+            }
+            
+            // Capturar imagem da câmera
+            captureButton.addEventListener('click', function() {
+                if (!stream) {
+                    status.textContent = 'Câmera não inicializada.';
+                    return;
+                }
+                
+                // Configurar canvas com as mesmas dimensões do vídeo
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Desenhar o frame atual do vídeo no canvas
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Converter canvas para data URL e exibir na pré-visualização
+                cameraPreview.src = canvas.toDataURL('image/png');
+                cameraPreview.style.display = 'block';
+                uploadedImage = cameraPreview.src;
+                
+                status.textContent = 'Imagem capturada. Clique em "Processar com OCR".';
+                processButton.disabled = false;
+            });
             
             // Configurar área de upload
             uploadArea.addEventListener('click', function() {
@@ -767,9 +939,18 @@
             
             // Limpar tudo
             function clearAll() {
+                // Parar a câmera se estiver ativa
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                    video.srcObject = null;
+                }
+                
                 // Limpar preview de imagem
                 imagePreview.src = '';
                 imagePreview.style.display = 'none';
+                cameraPreview.src = '';
+                cameraPreview.style.display = 'none';
                 uploadedImage = null;
                 
                 // Limpar campos de entrada
@@ -796,8 +977,14 @@
                 exportButton.disabled = true;
                 
                 // Resetar status
-                status.textContent = 'Aguardando imagem da cartela...';
+                status.textContent = 'Selecione um método para carregar a imagem da cartela';
                 mainProgress.style.display = 'none';
+                
+                // Voltar para a aba de upload
+                inputTabs.forEach(t => t.classList.remove('active'));
+                document.querySelector('[data-method="upload"]').classList.add('active');
+                uploadSection.classList.add('active');
+                cameraSection.classList.remove('active');
             }
         });
     </script>
